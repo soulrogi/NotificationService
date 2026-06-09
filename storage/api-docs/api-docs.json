@@ -1,0 +1,267 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Notification Sending API",
+        "description": "Микросервис отправки уведомлений.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080",
+            "description": "Local development server"
+        }
+    ],
+    "paths": {
+        "/api/add": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Создать уведомление",
+                "description": "Создаёт одно или несколько уведомлений для указанных получателей и отправляет их в очередь Kafka.",
+                "operationId": "addNotification",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Успешное создание. Возвращает массив UUID созданных уведомлений.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/history/recipient/{id}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Получить историю уведомлений получателя",
+                "description": "Возвращает все уведомления для указанного получателя.",
+                "operationId": "7481156a25cbc7663cf95d598d526e07",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Идентификатор получателя",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Массив уведомлений получателя",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Notification"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/status/{uuid}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Получить статус уведомления",
+                "description": "Возвращает детальную информацию и текущий статус уведомления по его UUID.",
+                "operationId": "getNotificationStatus",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID уведомления",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Детальная информация об уведомлении",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Notification"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Уведомление не найдено или внутренняя ошибка"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Notification": {
+                "description": "Данные уведомления",
+                "properties": {
+                    "id": {
+                        "description": "UUID уведомления",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "recipient_id": {
+                        "description": "Идентификатор получателя",
+                        "type": "string"
+                    },
+                    "channel": {
+                        "description": "Канал отправки",
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email"
+                        ]
+                    },
+                    "priority": {
+                        "description": "Приоритет",
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "low"
+                        ]
+                    },
+                    "status": {
+                        "description": "Статус уведомления",
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "queued",
+                            "sent",
+                            "delivered",
+                            "discarded"
+                        ]
+                    },
+                    "message": {
+                        "description": "Текст сообщения",
+                        "type": "string"
+                    },
+                    "external_id": {
+                        "description": "Внешний ID о провайдера",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "error_message": {
+                        "description": "Сообщение об ошибке",
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "retry_count": {
+                        "description": "Количество попыток отправки",
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "description": "Дата создания",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "sent_at": {
+                        "description": "Дата отправки",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SendRequest": {
+                "description": "Запрос на отправку уведомления",
+                "properties": {
+                    "recipient_ids": {
+                        "description": "Массив ID получателей",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "maxItems": 1000,
+                        "minItems": 1
+                    },
+                    "channel": {
+                        "description": "Канал отправки",
+                        "type": "string",
+                        "enum": [
+                            "sms",
+                            "email"
+                        ]
+                    },
+                    "message": {
+                        "description": "Текст сообщения",
+                        "type": "string",
+                        "maxLength": 10000,
+                        "minLength": 1
+                    },
+                    "priority": {
+                        "description": "Приоритет уведомления",
+                        "type": "string",
+                        "enum": [
+                            "high",
+                            "low"
+                        ]
+                    },
+                    "idempotency_key": {
+                        "description": "Ключ идемпотентности",
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Notifications",
+            "description": "Операции с уведомлениями"
+        }
+    ]
+}

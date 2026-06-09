@@ -1,0 +1,6 @@
+services:
+    php:
+        user: "${USER_UID:-10001}:${USER_GID:-10001}"
+        environment:
+            PHP_IDE_CONFIG: serverName=api
+            APP_ENV: local
